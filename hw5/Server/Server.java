@@ -10,6 +10,7 @@ public class Server {
 
     public Server(ServerSocket serverSocket) {
         this.serverSocket = serverSocket;
+        System.out.println("Сервер запущен!");
     }
 
     public void start() {
@@ -17,16 +18,17 @@ public class Server {
             while (!serverSocket.isClosed()) {
                 Socket socket = serverSocket.accept();
                 System.out.println("Подключен новый клиент!");
-                ClientManager client = new ClientManager(socket);
-                Thread thread = new Thread(client);
+                Thread thread = new Thread(new ClientManager(socket));
                 thread.start();
             }
         } catch (IOException e) {
-            closeSocket();
+            System.out.println("Аварийнеая остановка сервера!");
+            stop();
         }
     }
 
-    public void closeSocket() {
+    public void stop() {
+        System.out.println("Завершение работы.");
         try {
             if (serverSocket != null) serverSocket.close();
         } catch (IOException e) {
@@ -34,9 +36,11 @@ public class Server {
         }
     }
 
-    public static void main(String[] args) throws IOException {
-        ServerSocket serverSocket = new ServerSocket(PORT);
-        Server server = new Server(serverSocket);
-        server.start();
+    public static void main(String[] args) {
+        try {
+            new Server(new ServerSocket(PORT)).start();
+        } catch (IOException e) {
+            System.out.println("Ошибка запуска сервера!");
+        }
     }
 }

@@ -6,67 +6,60 @@ import java.util.ArrayList;
 
 public class ClientManager implements Runnable {
     private Socket socket;
-    private BufferedReader bufferedReader;
-    private BufferedWriter bufferedWriter;
+    private BufferedReader in;
+    private BufferedWriter out;
+
     private String name;
     public static ArrayList<ClientManager> clients = new ArrayList<>();
 
     public ClientManager(Socket socket) {
         try {
             this.socket = socket;
-            bufferedWriter = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
-            bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            name = bufferedReader.readLine();
-            clients.add(this);
-            broadcastMessage("Server: " + name + " подключен к чату.");
+            in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
+            name = in.readLine();
+            broadcastMessage("Server: " + name + " присоеденился к чату.");
         } catch (IOException e) {
-            closeEverything(socket, bufferedReader, bufferedWriter);
+            close(socket, in, out);
         }
     }
 
     @Override
     public void run() {
-        String messageFromClient;
-
         while (socket.isConnected()) {
             try {
-                messageFromClient = bufferedReader.readLine();
-                broadcastMessage(messageFromClient);
+                broadcastMessage(in.readLine());
             } catch (IOException e) {
-                closeEverything(socket, bufferedReader, bufferedWriter);
+                close(socket, in, out);
                 break;
             }
         }
     }
 
-    private void broadcastMessage(String messageToSend) {
-        for (ClientManager client: clients) {
-            try {
-                if (!client.name.equals(name)) {
-                    client.bufferedWriter.write(messageToSend);
-                    client.bufferedWriter.newLine();
-                    client.bufferedWriter.flush();
-                }
-            } catch (IOException e) {
-                closeEverything(socket, bufferedReader, bufferedWriter);
-            }
+    public void close(Socket socket, BufferedReader in, BufferedWriter out) {
+        System.out.println("Завершение работы.");
+        try {
+            if (socket != null) socket.close();
+            if (in != null) in.close();
+            if (out != null) out.close();
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
-    private void closeEverything(Socket socket, BufferedReader bufferedReader, BufferedWriter bufferedWriter) {
+    public void broadcastMessage(String message) {
         removeClient();
         try {
-            if (bufferedReader != null) {
-                bufferedReader.close();
-            }
-            if (bufferedWriter != null) {
-                bufferedWriter.close();
-            }
-            if (socket != null) {
-                socket.close();
+            for (ClientManager client: clients) {
+                if (!client.name.equals(name)) {
+                    client.out.write(message);
+                    client.out.newLine();
+                    client.out.flush();
+                }
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            System.out.println("Ошибка отправки сообщений!");
+            close(socket, in, out);
         }
     }
 
